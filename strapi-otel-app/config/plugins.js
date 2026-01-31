@@ -1,4 +1,4 @@
-module.exports = () => ({
+module.exports = ({ env }) => ({
   prometheus: {
     enabled: true,
     config: {
@@ -8,8 +8,8 @@ module.exports = () => ({
 
       // Optional: Add custom labels to all metrics
       labels: {
-        app: 'my-strapi-app',
-        environment: 'production',
+        app: env('APP_NAME', 'strapi-app'),
+        environment: env('ENV', 'development'),
       },
 
       // Server configuration
