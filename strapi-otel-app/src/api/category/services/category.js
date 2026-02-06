@@ -5,5 +5,22 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { trace } = require('@opentelemetry/api');
 
-module.exports = createCoreService('api::category.category');
+const tracer = trace.getTracer('strapi-otel-tracer');
+
+module.exports = createCoreService('api::category.category', () => ({
+  async find(...args) {
+    let response;
+    await tracer.startActiveSpan('find categories', async (span) => {
+      // Calling the default core controller
+      response = await super.find(...args);
+      // some custom logic
+
+      span.end();
+    });
+    const { results, pagination } = response;
+
+    return { results, pagination };
+  },
+}));
