@@ -20,7 +20,6 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
     await context.with(parentContext, async () => {
       await tracer.startActiveSpan(
         'list-grouped-posts-by-category',
-        parentContext,
         async (span) => {
           const posts = await strapi
             .service('api::post.post')
@@ -29,7 +28,7 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
             .service('api::category.category')
             .find();
 
-          ctx.body = { posts, categories }; // Set the response body here
+          ctx.body = { posts, categories };
           span.end();
         }
       );

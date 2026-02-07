@@ -14,9 +14,7 @@ module.exports = createCoreService('api::post.post', () => ({
   async find(...args) {
     let response;
     await tracer.startActiveSpan('find posts', async (span) => {
-      // Calling the default core controller
       response = await super.find(...args);
-      // some custom logic
 
       span.end();
     });

@@ -8,6 +8,11 @@ const {
   ConsoleSpanExporter,
 } = require('@opentelemetry/sdk-trace-node');
 const { W3CTraceContextPropagator } = require('@opentelemetry/core');
+const {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} = require('@opentelemetry/semantic-conventions');
+const { resourceFromAttributes } = require('@opentelemetry/resources');
 
 const OTLP_TRACES_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
 
@@ -20,6 +25,9 @@ const spanProcessor = new BatchSpanProcessor(
 const consoleSpanProcessor = new SimpleSpanProcessor(new ConsoleSpanExporter());
 
 const sdk = new NodeSDK({
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: 'node-otel-app',
+  }),
   instrumentations: [],
   textMapPropagator: new W3CTraceContextPropagator(),
   spanProcessors: [consoleSpanProcessor, spanProcessor],

@@ -13,9 +13,7 @@ module.exports = createCoreService('api::category.category', () => ({
   async find(...args) {
     let response;
     await tracer.startActiveSpan('find categories', async (span) => {
-      // Calling the default core controller
       response = await super.find(...args);
-      // some custom logic
 
       span.end();
     });
