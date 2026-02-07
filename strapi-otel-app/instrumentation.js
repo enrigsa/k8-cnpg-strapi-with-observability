@@ -8,6 +8,8 @@ const {
   ConsoleSpanExporter,
 } = require('@opentelemetry/sdk-trace-node');
 const { W3CTraceContextPropagator } = require('@opentelemetry/core');
+const { ATTR_SERVICE_NAME } = require('@opentelemetry/semantic-conventions');
+const { resourceFromAttributes } = require('@opentelemetry/resources');
 require('dotenv').config();
 
 const spanProcessor = new BatchSpanProcessor(
@@ -19,6 +21,9 @@ const spanProcessor = new BatchSpanProcessor(
 const consoleSpanProcessor = new SimpleSpanProcessor(new ConsoleSpanExporter());
 
 const sdk = new NodeSDK({
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME,
+  }),
   instrumentations: [],
   textMapPropagator: new W3CTraceContextPropagator(),
   spanProcessors: [consoleSpanProcessor, spanProcessor],
