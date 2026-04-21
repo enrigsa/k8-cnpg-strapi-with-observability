@@ -18,34 +18,34 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/grouped-posts-by-category', async (req, res) => {
-  await tracer.startActiveSpan(
+app.get('/grouped-posts-by-category', (req, res) => {
+  tracer.startActiveSpan(
     'handling grouped-posts-by-category request',
-    async (span) => {
+    (span) => {
       let headers = {};
       // Inject current trace context into headers
       propagation.inject(context.active(), headers);
 
-      const groupedCategories = await fetch(
-        `http://localhost:1337/api/grouped-posts-by-category`,
-        { headers },
-      )
-        .then((res) => res.json())
-        .then((resp) => resp.data.groupedPostsByCategory)
+      fetch(`http://localhost:1337/api/grouped-posts-by-category`, {
+        headers,
+      })
+        .then((resp) => resp.json())
+        .then((resp) => {
+          const groupedCategories = resp.data.groupedPostsByCategory;
+
+          res.render('grouped-posts-by-category', {
+            categories: groupedCategories,
+          });
+        })
         .catch((error) => {
           span.recordException(error);
           span.setStatus({ code: SpanStatusCode.ERROR });
 
-          res.status(500).json({ error: error.message });
+          res.render('error', { message: error.message });
+        })
+        .finally(() => {
+          span.end();
         });
-
-      span.end();
-
-      console.log('groupedPosts:', groupedCategories);
-
-      res.render('grouped-posts-by-category', {
-        categories: groupedCategories,
-      });
     },
   );
 });
