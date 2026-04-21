@@ -31,17 +31,18 @@ app.get('/grouped-posts-by-category', (req, res) => {
       })
         .then((resp) => resp.json())
         .then((resp) => {
-          const groupedCategories = resp.data.groupedPostsByCategory;
+          const groupedPostsByCategory =
+            resp?.data?.groupedPostsByCategory ?? [];
 
           res.render('grouped-posts-by-category', {
-            categories: groupedCategories,
+            categories: groupedPostsByCategory,
           });
         })
         .catch((error) => {
+          res.render('error', { message: error.message });
+
           span.recordException(error);
           span.setStatus({ code: SpanStatusCode.ERROR });
-
-          res.render('error', { message: error.message });
         })
         .finally(() => {
           span.end();
@@ -51,5 +52,5 @@ app.get('/grouped-posts-by-category', (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('node-otel-app listening on http://localhost:3000...');
+  console.log('node-otel-app listening on port 3000...');
 });
