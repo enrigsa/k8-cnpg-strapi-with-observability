@@ -17,7 +17,7 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
     const parentContext = propagation.extract(context.active(), headers);
 
     // Use the extracted context to create spans for the operations
-    const sanitizedResponse = await withTraceContext(
+    const groupedPostsByCategory = await withTraceContext(
       parentContext,
       async () =>
         await withSpan('list-grouped-posts-by-category', async () => {
@@ -44,10 +44,28 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
             }
           );
 
-          return this.transformResponse({ posts, categories });
+          const groupedPostsByCategory = categories.map((category) => {
+            const postsInCategory = posts
+              .filter((post) =>
+                post?.categories?.some((cat) => cat.id === category.id)
+              )
+              .map((post) => ({
+                id: post.id,
+                title: post.title,
+                content: post.content,
+              }));
+
+            return {
+              name: category.name,
+              description: category.description,
+              posts: postsInCategory,
+            };
+          });
+
+          return this.transformResponse({ groupedPostsByCategory });
         })
     );
 
-    return sanitizedResponse;
+    return groupedPostsByCategory;
   },
 }));
