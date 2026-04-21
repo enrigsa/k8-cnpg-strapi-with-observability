@@ -26,6 +26,7 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
             const { results } = await strapi
               .service('api::post.post')
               .find({ populate: ['categories'] });
+            // Sanitizing output will hide data if the user doesn't have permissions
             const sanitizedResults = await this.sanitizeOutput(results, ctx);
 
             return sanitizedResults;
@@ -38,6 +39,7 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
               const { results } = await strapi
                 .service('api::category.category')
                 .find();
+              // Sanitizing output will hide data if the user doesn't have permissions
               const sanitizedResults = await this.sanitizeOutput(results, ctx);
 
               return sanitizedResults;
@@ -50,14 +52,14 @@ module.exports = createCoreController('api::post.post', ({ strapi }) => ({
                 post?.categories?.some((cat) => cat.id === category.id)
               )
               .map((post) => ({
+                content: post.content,
                 id: post.id,
                 title: post.title,
-                content: post.content,
               }));
 
             return {
-              name: category.name,
               description: category.description,
+              name: category.name,
               posts: postsInCategory,
             };
           });
