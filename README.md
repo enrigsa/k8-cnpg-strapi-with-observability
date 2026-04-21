@@ -1,6 +1,18 @@
-# Prometheus metrics
+# Strapi and Cloud Native PG on Kubernetes with Observability
 
-## Configuration
+This project demonstrates a full-stack application with Strapi CMS, PostgreSQL database managed by Cloud Native PG Operator, and comprehensive observability using OpenTelemetry and Prometheus.
+
+## Applications
+
+**node-otel-app** — Frontend web server that serves views and initializes distributed traces for user requests. Routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
+
+**strapi-otel-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. Instruments API calls with OpenTelemetry spans for distributed tracing.
+
+**PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL server. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
+
+## Prometheus metrics for Strapi
+
+### Configuration
 
 Exposing Prometheus metrics often requires adding instrumentation to apps or using exporters. The [Strapi Prometheus plugin](https://market.strapi.io/plugins/strapi-prometheus) provides a simple way to configure a very decent range of metrics.
 
@@ -10,14 +22,14 @@ When launching strapi locally, metrics are visible in `http://localhost:9000/met
 
 ![Strapi metrics](media/strapi_metrics_localhost_I.png 'Strapi metrics')
 
-## Queries
+### Queries
 
     up{service="strapi-app-service"}
     histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app"}[5m])))
 
-# Opentelemetry
+## Opentelemetry
 
-## API
+### API
 
 To extract context and correlate spans in the receiving service, use `propagation.extract` and `context.with`:
 
@@ -41,9 +53,17 @@ await context.with(parentContext, async () => {
 });
 ```
 
-# Testing locally
+## Local deployment
 
-Launch Jaeger:
+Before starting services, ensure:
+
+- PostgreSQL is running locally on port 5432
+- Jaeger and observability stack are up
+- `.env` files are configured for each app
+
+### Jaeger
+
+Launching Jaeger to collect traces:
 
     docker run --rm --name jaeger \
     -p 16686:16686 \
@@ -53,7 +73,7 @@ Launch Jaeger:
     -p 9411:9411 \
     cr.jaegertracing.io/jaegertracing/jaeger:2.15.0
 
-Open Jaeger in browser in `http://localhost:16686`. Select `service` and click on `Find traces`:
+Open Jaeger UI at `http://localhost:16686`.
 
 ![Jaeger Dashboard](media/jaeger_dashboard.png 'Jaeger Dashboard')
 
@@ -61,7 +81,31 @@ Inspecting a trace:
 
 ![Displaying Trace with Jaeger](media/jaeger_trace_timeline_1.png 'Traces with Jaeger')
 
-Resources:
+### Strapi
+
+Launch Strapi to serve the PostgreSQL database through a CMS:
+
+    cd strapi-otel-app
+    npm run build
+    npm run start
+
+Access Strapi at `http://localhost:1337`. On first access:
+
+1. Create an admin user
+2. Enable `public` role permissions for `categories` and `posts` entities
+3. Use the Content Manager to create categories and posts, then link them via relations
+
+### Frontend app
+
+Launch the Node.js frontend application:
+
+    cd node-otel-app
+    node index.js --env-file=.env
+
+Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/grouped-posts-by-category` to see grouped posts rendered with tracing enabled.
+
+## Resources:
 
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
+- [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
