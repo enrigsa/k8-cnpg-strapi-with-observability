@@ -1,6 +1,6 @@
 const { trace, context, SpanStatusCode } = require('@opentelemetry/api');
 
-const tracer = trace.getTracer('strapi-otel-tracer');
+const tracer = trace.getTracer('strapi-tracer');
 
 /**
  * Utility function to create a span around an asynchronous operation, ensuring that the span is properly ended and any exceptions are recorded.

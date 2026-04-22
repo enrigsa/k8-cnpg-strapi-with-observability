@@ -4,9 +4,9 @@ This project demonstrates a full-stack application with Strapi CMS, PostgreSQL d
 
 ## Applications
 
-**node-otel-app** — Frontend web server that serves views and initializes distributed traces for user requests. Routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
+**node-app** — Frontend web server that serves views and initializes distributed traces for user requests. Routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
 
-**strapi-otel-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. Instruments API calls with OpenTelemetry spans for distributed tracing.
+**strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. Instruments API calls with OpenTelemetry spans for distributed tracing.
 
 **PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL server. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
 
@@ -16,7 +16,7 @@ This project demonstrates a full-stack application with Strapi CMS, PostgreSQL d
 
 Exposing Prometheus metrics often requires adding instrumentation to apps or using exporters. The [Strapi Prometheus plugin](https://market.strapi.io/plugins/strapi-prometheus) provides a simple way to configure a very decent range of metrics.
 
-`strapi-otel-app` has an example of specific configuration in [`strapi-otel-app/config/plugins.js`](strapi-otel-app/config/plugins.js).
+`strapi-app` has an example of specific configuration in [`strapi-app/config/plugins.js`](strapi-app/config/plugins.js).
 
 When launching strapi locally, metrics are visible in `http://localhost:9000/metrics`:
 
@@ -85,7 +85,7 @@ Inspecting a trace:
 
 Launch Strapi to serve the PostgreSQL database through a CMS:
 
-    cd strapi-otel-app
+    cd strapi-app
     npm run build
     npm run start
 
@@ -95,11 +95,11 @@ Access Strapi at `http://localhost:1337`. On first access:
 2. Enable `public` role permissions for `categories` and `posts` entities
 3. Use the Content Manager to create categories and posts, then link them via relations
 
-### Frontend app
+### node app
 
 Launch the Node.js frontend application:
 
-    cd node-otel-app
+    cd node-app
     node index.js --env-file=.env
 
 Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/grouped-posts-by-category` to see grouped posts rendered with tracing enabled.

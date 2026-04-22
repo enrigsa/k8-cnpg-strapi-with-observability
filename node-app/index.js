@@ -53,5 +53,5 @@ app.get('/grouped-posts-by-category', (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('node-otel-app listening on port 3000...');
+  console.log('frontend-app listening on port 3000...');
 });
