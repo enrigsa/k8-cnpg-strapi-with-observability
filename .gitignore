@@ -136,3 +136,8 @@ build
 
 .github/
 .vscode/
+
+#############################
+# Api requests for development
+#############################
+strapi-otel-requests/

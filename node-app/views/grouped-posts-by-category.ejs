@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Grouped Posts by Category</title>
+    <link rel="stylesheet" href="/styles/grouped-posts-by-category.css" />
+  </head>
+  <body>
+    <h1>Grouped Posts by Category</h1>
+    <p><a href="/">Back to home</a></p>
+    <% if (categories) { %>
+      <% categories.map(category => { %>
+        <section class="category">
+          <h2><%= category.name || 'Unnamed category' %></h2>
+          <ul>
+            <% if (category.posts && category.posts.length) { %>
+              <% category.posts.map(post => { %>
+                <li><%= post.title || 'Untitled post' %></li>
+              <% }); %>
+            <% } else { %>
+              <li>No posts for this category.</li>
+            <% } %>
+          </ul>
+        </section>
+      <% }); %>
+    <% } else { %>
+      <p>No categories available.</p>
+    <% } %>
+  </body>
+</html>
