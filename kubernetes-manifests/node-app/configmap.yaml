@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-app-conf-demo
+  namespace: observability-demo
+data:
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  # Endpoint of the OpenTelemetry Collector, which will receive the traces from the Node application.
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://open-telemetry-instance-demo-collector:4318/v1/traces
+  # Resource attributes to be added to the traces, which can be used for filtering and grouping in observability tools.
+  OTEL_SERVICE_NAME: node-app-traces
+  # Service name of the Strapi app in Kubernetes, which will be resolved to the correct IP address by Kubernetes DNS.
+  STRAPI_API_URI: http://strapi-app-service-demo

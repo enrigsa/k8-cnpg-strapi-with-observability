@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-app-service
+  namespace: observability-demo
+  labels:
+    app.kubernetes.io/name: node-app-demo
+spec:
+  ports:
+    - port: 80
+      name: http
+      targetPort: 3000
+      protocol: TCP
+    - port: 10254
+      name: prometheus
+      targetPort: 3000
+  selector:
+    app: node-app-demo
