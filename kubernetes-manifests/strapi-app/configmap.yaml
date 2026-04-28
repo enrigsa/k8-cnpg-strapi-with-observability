@@ -7,13 +7,13 @@ data:
   APP_NAME: strapi-app
   # Prefix will be used by Prometheus plugin to create metrics with it (e.g. strapi_app_request_duration_seconds)
   APP_PREFIX: strapi_app_
-  # This is the hostname of the cnpg cluster, which will be resolved to the correct IP address by Kubernetes DNS.
+  # Hostname of the cnpg cluster, which will be resolved to the correct IP address by Kubernetes DNS.
   DATABASE_HOST: cnpg-cluster-demo-rw.observability-demo
   DATABASE_NAME: app
   DATABASE_PORT: '5432'
   HOST: 0.0.0.0
   # Endpoint of the OpenTelemetry Collector, which will receive the traces from the Strapi application.
-  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://open-telemetry-instance-demo-collector:4318/v1/traces # This is the endpoint of the OpenTelemetry Collector, which will receive the traces from the Strapi application.
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://open-telemetry-instance-demo-collector:4318/v1/traces
   # Resource attributes to be added to the traces, which can be used for filtering and grouping in observability tools.
   OTEL_SERVICE_NAME: strapi-app-traces
   PORT: '1337'

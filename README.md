@@ -53,6 +53,57 @@ await context.with(parentContext, async () => {
 });
 ```
 
+## Kubernetes deployment
+
+`node-app` and `strapi-app` images are built with docker and are required to be stored in a container registry. Images and image credentials for `node-demo-app` and `strapi-demo-app` deployments must be based on your container registry visibility, access and repository name.
+
+The directory `kubernetes-manifests/secret-samples` provide examples of how to configure secrets.
+
+Object deployments should be in this order:
+
+1. Deploy cnpg-cluster objects:
+
+```bash
+kubectl apply -f kubernetes-manifests/cloud-native-pg
+```
+
+2. Deploy strapi-app objects:
+
+```bash
+kubectl apply -f kubernetes-manifests/strapi-app/configmap.yaml
+kubectl apply -f kubernetes-manifests/strapi-app/persistent-volume-claim.yaml
+kubectl apply -f kubernetes-manifests/strapi-app/deployment.yaml
+kubectl apply -f kubernetes-manifests/strapi-app/service.yaml
+```
+
+3. Deploy node-app objects:
+
+```bash
+kubectl apply -f kubernetes-manifests/node-app/configmap.yaml
+kubectl apply -f kubernetes-manifests/node-app/deployment.yaml
+kubectl apply -f kubernetes-manifests/node-app/service.yaml
+```
+
+4. Deploy Opentelemetry collector:
+
+```bash
+kubectl apply -f kubernetes-manifests/opentelemetry/custom-resource-definition.yaml
+kubectl apply -f kubernetes-manifests/opentelemetry/opentelemetry-collector.yaml
+```
+
+5. Deploy kube-prometheus-stack helm chart:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+```
+
+```bash
+helm install prometheus-stack prometheus-community/kube-prometheus-stack \
+  -n observability-demo \
+  -f kubernetes-manifests/kube-prometheus-stack/values.yaml
+```
+
 ## Local deployment
 
 Before starting services, ensure:
@@ -109,3 +160,7 @@ Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/gr
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
+
+```
+
+```
