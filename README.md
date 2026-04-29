@@ -4,9 +4,9 @@ This project demonstrates a full-stack application with Strapi CMS, PostgreSQL d
 
 ## Applications
 
-**node-app** — Frontend web server that serves views and initializes distributed traces for user requests. Routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
+**node-app** — Frontend web server that serves views and initializes distributed traces for user requests. It routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
 
-**strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. Instruments API calls with OpenTelemetry spans for distributed tracing.
+**strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. It instruments API calls with OpenTelemetry spans for distributed tracing.
 
 **PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL server. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
 
@@ -14,11 +14,11 @@ This project demonstrates a full-stack application with Strapi CMS, PostgreSQL d
 
 ### Configuration
 
-Exposing Prometheus metrics often requires adding instrumentation to apps or using exporters. The [Strapi Prometheus plugin](https://market.strapi.io/plugins/strapi-prometheus) provides a simple way to configure a very decent range of metrics.
+Exposing Prometheus metrics often requires adding instrumentation to apps or using exporters. The [Strapi Prometheus plugin](https://market.strapi.io/plugins/strapi-prometheus) provides a simple way to configure a comprehensive range of metrics.
 
 `strapi-app` has an example of specific configuration in [`strapi-app/config/plugins.js`](strapi-app/config/plugins.js).
 
-When launching strapi locally, metrics are visible in `http://localhost:9000/metrics`:
+When launching Strapi locally, metrics are visible in `http://localhost:9000/metrics`:
 
 ![Strapi metrics](media/strapi_metrics_localhost_I.png 'Strapi metrics')
 
@@ -27,11 +27,11 @@ When launching strapi locally, metrics are visible in `http://localhost:9000/met
     up{service="strapi-app-service-demo" namespace="observability-demo"}
     histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
 
-## Opentelemetry
+## OpenTelemetry
 
 ### Manual instrumentation
 
-To extract context and correlate spans in the receiving service in a strapi controller, use `propagation.extract` and `context.with`:
+To extract context and correlate spans in the receiving service in a Strapi controller, use `propagation.extract` and `context.with`:
 
 ```js
 const { trace, context, propagation } = require('@opentelemetry/api');
@@ -44,7 +44,7 @@ const parentContext = propagation.extract(context.active(), headers);
 
 await context.with(parentContext, async () => {
   await tracer.startActiveSpan(
-    '< span_name >',
+    '<span_name>',
     async (span) => {
       // execute instrumented code
       span.end();
@@ -57,9 +57,9 @@ await context.with(parentContext, async () => {
 
 ### Deployment
 
-`node-app` and `strapi-app` images are built with docker and are required to be stored in a container registry. Images and image credentials for `node-demo-app` and `strapi-demo-app` deployments must be based on your container registry visibility, access and repository name.
+`node-app` and `strapi-app` images are built with Docker and are required to be stored in a container registry. Image credentials for the `node-demo-app` and `strapi-demo-app` deployments must align with your container registry's visibility, access, and repository name.
 
-The directory `kubernetes-manifests/secret-samples` provide examples of how to configure secrets.
+The directory `kubernetes-manifests/secret-samples` provides examples of how to configure secrets.
 
 Object deployments should be in this order:
 
@@ -86,14 +86,14 @@ kubectl apply -f kubernetes-manifests/node-app/deployment.yaml \
 kubectl apply -f kubernetes-manifests/node-app/service.yaml
 ```
 
-4. Deploy Opentelemetry collector:
+4. Deploy Opentelemetry Collector. For illustrative purposes, we have selected the [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file) based on an OpenTelemetry Collector as it already provides a dashboard to inspect traces. It is recommended to explore other OpenTelemetry Collector images and dashboarding alternatives for production setups:
 
 ```bash
 kubectl apply -f kubernetes-manifests/opentelemetry/custom-resource-definition.yaml
 kubectl apply -f kubernetes-manifests/opentelemetry/opentelemetry-collector.yaml
 ```
 
-5. Deploy the kube-prometheus-stack Helm chart. If there is already a Prometheus operator in a different namespace, it is not necessary to install the chart again. Also, consider installing the Prometheus operator in a different namespace if it will be used for other namespaces:
+5. Deploy the [kube-prometheus-stack Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack). If there is already a Prometheus operator in a different namespace, it is not necessary to install the chart again. Also, consider installing the Prometheus operator in a different namespace if it will be used for other namespaces:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -119,9 +119,15 @@ Querying `up` metrics for the namespace `observability-demo` shows `cnpg-cluster
 
 ![Observability-demo up metrics](media/observability-demo_up_metrics.png 'Observability-demo up metrics')
 
-OpenTelemetry traces can be inspected through the Grafana dashboard.
+Launch the Jaeger dashboard:
 
-Also, they can be debugged through the collector logs.
+```bash
+kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:16686 -n observability-demo
+```
+
+![Jaeger Trace Inspection](media/jaeger_trace_timeline_2.png 'Jaeger Trace Inspection')
+
+Also, they can be debugged through the collector logs as the `debug` exporter is activated.
 
 ## Local deployment
 
@@ -179,3 +185,5 @@ Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/gr
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
+- [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file)
+- [kube-prometheus-stack Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
