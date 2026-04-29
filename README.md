@@ -24,14 +24,14 @@ When launching strapi locally, metrics are visible in `http://localhost:9000/met
 
 ### Queries
 
-    up{service="strapi-app-service"}
-    histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app"}[5m])))
+    up{service="strapi-app-service-demo" namespace="observability-demo"}
+    histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
 
 ## Opentelemetry
 
-### API
+### Manual instrumentation
 
-To extract context and correlate spans in the receiving service, use `propagation.extract` and `context.with`:
+To extract context and correlate spans in the receiving service in a strapi controller, use `propagation.extract` and `context.with`:
 
 ```js
 const { trace, context, propagation } = require('@opentelemetry/api');
@@ -53,7 +53,9 @@ await context.with(parentContext, async () => {
 });
 ```
 
-## Kubernetes deployment
+## Kubernetes
+
+### Deployment
 
 `node-app` and `strapi-app` images are built with docker and are required to be stored in a container registry. Images and image credentials for `node-demo-app` and `strapi-demo-app` deployments must be based on your container registry visibility, access and repository name.
 
@@ -79,8 +81,8 @@ kubectl apply -f kubernetes-manifests/strapi-app/service.yaml
 3. Deploy node-app objects:
 
 ```bash
-kubectl apply -f kubernetes-manifests/node-app/configmap.yaml
-kubectl apply -f kubernetes-manifests/node-app/deployment.yaml
+kubectl apply -f kubernetes-manifests/node-app/configmap.yaml \
+kubectl apply -f kubernetes-manifests/node-app/deployment.yaml \
 kubectl apply -f kubernetes-manifests/node-app/service.yaml
 ```
 
@@ -91,7 +93,7 @@ kubectl apply -f kubernetes-manifests/opentelemetry/custom-resource-definition.y
 kubectl apply -f kubernetes-manifests/opentelemetry/opentelemetry-collector.yaml
 ```
 
-5. Deploy kube-prometheus-stack helm chart:
+5. Deploy the kube-prometheus-stack Helm chart. If there is already a Prometheus operator in a different namespace, it is not necessary to install the chart again. Also, consider installing the Prometheus operator in a different namespace if it will be used for other namespaces:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -103,6 +105,23 @@ helm install prometheus-stack prometheus-community/kube-prometheus-stack \
   -n observability-demo \
   -f kubernetes-manifests/kube-prometheus-stack/values.yaml
 ```
+
+### Inspecting traces and metrics
+
+Metrics for strapi-app-demo and cnpg-demo-cluster are available on the Prometheus server:
+
+```bash
+kubectl port-forward -n observability-demo \
+  svc/kube-prometheus-stack-prometheus 9090:9090 \
+```
+
+Querying `up` metrics for the namespace `observability-demo` shows `cnpg-cluster-demo-1` and `strapi-app-demo`:
+
+![Observability-demo up metrics](media/observability-demo_up_metrics.png 'Observability-demo up metrics')
+
+OpenTelemetry traces can be inspected through the Grafana dashboard.
+
+Also, they can be debugged through the collector logs.
 
 ## Local deployment
 
@@ -160,7 +179,3 @@ Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/gr
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
-
-```
-
-```
