@@ -119,7 +119,13 @@ Querying `up` metrics for the namespace `observability-demo` shows `cnpg-cluster
 
 ![Observability-demo up metrics](media/observability-demo_up_metrics.png 'Observability-demo up metrics')
 
-Launch the Jaeger dashboard:
+Before launching the Jaeger dashboard, port-forward the node-app-demo and visit an instrumented route (`http://localhost:3000/grouped-posts-by-category`) to collect traces:
+
+```bash
+kubectl port-forward deploy/node-app-demo 3000:3000 -n observability-demo
+```
+
+Then, launch the Jaeguer Dashboard:
 
 ```bash
 kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:16686 -n observability-demo
@@ -127,7 +133,7 @@ kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:1668
 
 ![Jaeger Trace Inspection](media/jaeger_trace_timeline_2.png 'Jaeger Trace Inspection')
 
-Also, they can be debugged through the collector logs as the `debug` exporter is activated.
+Traces can be also be debugged through the collector logs as the `debug` exporter is activated.
 
 ## Local deployment
 
