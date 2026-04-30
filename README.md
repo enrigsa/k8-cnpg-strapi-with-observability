@@ -18,8 +18,8 @@ flowchart LR
   StrapiApp -->|SQL| CloudNativePG[Cloud Native PG]
   StrapiApp -->|app metrics| Prometheus[Prometheus]
   CloudNativePG -->|DB metrics| Prometheus
-  NodeApp -->|traces| Jaeger[Jaeger]
-  StrapiApp -->|traces| Jaeger
+  NodeApp -->|traces| OpenTelemetryCollector[OpenTelemetry Collector]
+  StrapiApp -->|traces| OpenTelemetryCollector
 ```
 
 **node-app** — Frontend web server that serves views and initializes distributed traces for user requests. It routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
@@ -48,7 +48,23 @@ When launching Strapi locally, metrics are visible in `http://localhost:9000/met
 
 ### Manual instrumentation
 
-To extract context and correlate spans in the receiving service in a Strapi controller, use `propagation.extract` and `context.with`:
+To inject trace context into headers when fetching services (example in `node-app/index.js`):
+
+```js
+const { trace, context, propagation } = require('@opentelemetry/api');
+const tracer = trace.getTracer('<service-name>'));
+tracer.startActiveSpan('<span-name>', (span) => {
+  let headers = {};
+  // Inject current trace context into headers
+  propagation.inject(context.active(), headers);
+
+  fetch('<url>', { headers }).finally(() => {
+    span.end();
+  });
+});
+```
+
+To extract context and correlate spans in the receiving service in a Strapi controller, use `propagation.extract` and `context.with` (example in `strapi-app/src/api/post/controllers/post.js`):
 
 ```js
 const { trace, context, propagation } = require('@opentelemetry/api');
@@ -69,8 +85,6 @@ await context.with(parentContext, async () => {
   );
 });
 ```
-
-This instrumentation has been implemented in `strapi-app/src/api/post/controllers/post.js`, with some adjustments to improve readability.
 
 ## Kubernetes
 
