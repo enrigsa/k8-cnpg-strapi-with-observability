@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  namespace: observability-demo
+  labels:
+    release: observability-demo
+  name: strapi-app-demo-monitor
+spec:
+  endpoints:
+    - interval: 15s
+      path: /metrics
+      port: prometheus
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: strapi-app-demo

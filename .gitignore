@@ -141,3 +141,10 @@ build
 # Api requests for development
 #############################
 strapi-otel-requests/
+
+
+#############################
+# Kubernetes secrets
+#############################
+
+kubernetes-manifests/secrets/

@@ -1,0 +1,16 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cnpg-cluster-demo
+  namespace: observability-demo
+spec:
+  instances: 1
+  storage:
+    size: 40Gi
+  managed:
+    roles:
+      - name: observability-demo-pg-username
+        login: true
+        passwordSecret:
+          name: pg-user-credentials-demo
+        superuser: true

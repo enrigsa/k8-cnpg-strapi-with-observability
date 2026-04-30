@@ -27,7 +27,7 @@ app.get('/grouped-posts-by-category', (req, res) => {
       // Inject current trace context into headers
       propagation.inject(context.active(), headers);
 
-      fetch(`http://localhost:1337/api/grouped-posts-by-category`, {
+      fetch(`${process.env.STRAPI_API_URI}/api/grouped-posts-by-category`, {
         headers,
       })
         .then((resp) => resp.json())

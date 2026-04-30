@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cnpg-cluster-monitor-demo
+  namespace: observability-demo
+  labels:
+    release: observability-demo
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: cnpg-cluster-demo
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 15s

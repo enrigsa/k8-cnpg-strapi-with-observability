@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strapi-app-demo
+  namespace: observability-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: strapi-app-demo
+  template:
+    metadata:
+      labels:
+        app: strapi-app-demo
+    spec:
+      volumes:
+        - name: strapi-uploads-demo
+          persistentVolumeClaim:
+            claimName: strapi-uploads-demo
+      containers:
+        - name: strapi
+          image: <your-strapi-app-image-name> # Adjust this to match your image
+          ports:
+            - containerPort: 1337
+              protocol: TCP
+              name: http
+            - containerPort: 9000
+              protocol: TCP
+              name: prometheus
+          envFrom:
+            - configMapRef:
+                name: strapi-conf-demo
+            - secretRef:
+                name: strapi-credentials-demo
+          env:
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: pg-user-credentials-demo
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-user-credentials-demo
+                  key: password
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: '/opt/app/public/uploads'
+              name: strapi-uploads-demo
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 1337
+            initialDelaySeconds: 50
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 1337
+            initialDelaySeconds: 30
+            periodSeconds: 90
+      initContainers:
+        - name: init-create-db-user
+          image: postgres:14
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: pg-user-credentials-demo
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-user-credentials-demo
+                  key: password
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: pg-user-credentials-demo
+                  key: database
+            - name: PGHOST
+              valueFrom:
+                secretKeyRef:
+                  name: pg-user-credentials-demo
+                  key: host
+          command:
+            - /bin/sh
+            - -c
+            - |
+              max_tries=5
+
+              for i in $(seq 1 $max_tries); do
+                if psql -c 'select 1' > /dev/null 2>&1; then
+                  echo "database is ready!"
+                  exit 0
+                fi
+
+                echo "waiting for database (attempt $i/$max_tries)"
+                [ $i -lt $max_tries ] && sleep 20
+              done
+
+              echo "database failed to become ready after $max_tries attempts"
+              exit 1
+        - name: fix-strapi-uploads-permissions
+          image: alpine:3
+          command: ['/bin/sh', '-c', 'chmod -R 777 /opt/app/public/uploads']
+          volumeMounts:
+            - mountPath: '/opt/app/public/uploads'
+              name: strapi-uploads-demo
+          securityContext:
+            runAsUser: 0
+      imagePullSecrets:
+        - name: <image-pull-secret-name> # Adjust this to match your image pull secret

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-app-demo
+  namespace: observability-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-app-demo
+  template:
+    metadata:
+      labels:
+        app: node-app-demo
+    spec:
+      imagePullSecrets:
+        - name: <image-pull-secret-name> # Adjust this to match your image pull secret
+      containers:
+        - name: node-app
+          image: <your-node-app-image-name> # Adjust this to match your image
+          envFrom:
+            - configMapRef:
+                name: node-app-conf-demo
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+              name: http
+          imagePullPolicy: Always
