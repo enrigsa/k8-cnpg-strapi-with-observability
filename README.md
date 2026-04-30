@@ -2,13 +2,35 @@
 
 This project demonstrates a full-stack application with Strapi CMS, PostgreSQL database managed by Cloud Native PG Operator, and comprehensive observability using OpenTelemetry and Prometheus.
 
-## Applications
+Strapi is a Content Management System (CMS) that provides flexibility to create custom services, controllers, policies, and more. When deploying this application in a distributed environment such as Kubernetes, adding observability helps with error detection and performance analysis.
+
+This demo illustrates three approaches to improve Strapi observability:
+
+- **Strapi Prometheus plugin to expose metrics** — useful for HTTP request, error, and resource metrics without custom code
+- **Collection of logs, metrics, and traces based on the OpenTelemetry framework** — needed for distributed traces and request context propagation in custom controllers or other components
+- **Prometheus metrics for Cloud Native PG, a PostgreSQL operator for Kubernetes** — lets you correlate database health and latency with Strapi behavior. Because Strapi connects to a SQL database, adding observability to the database helps surface issues that affect Strapi.
+
+## Applications for the demo
+
+```mermaid
+flowchart LR
+  NodeApp[Node App] -->|HTTP + trace context| StrapiApp[Strapi App]
+  StrapiApp -->|SQL| CloudNativePG[Cloud Native PG]
+  StrapiApp -->|app metrics| Prometheus[Prometheus]
+  CloudNativePG -->|DB metrics| Prometheus
+  NodeApp -->|traces| Jaeger[Jaeger]
+  StrapiApp -->|traces| Jaeger
+```
 
 **node-app** — Frontend web server that serves views and initializes distributed traces for user requests. It routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
 
 **strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. It instruments API calls with OpenTelemetry spans for distributed tracing.
 
-**PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL server. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
+**PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL operator. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
+
+**OpenTelemetry Collector** — Receives telemetry from instrumented services, processes traces and metrics, and forwards them to backends like Jaeger and Prometheus.
+
+**Prometheus Operator** — Manages Prometheus instances and service discovery in Kubernetes, making it easier to deploy and configure monitoring for Strapi, PostgreSQL, and the observability stack.
 
 ## Prometheus metrics for Strapi
 
@@ -21,11 +43,6 @@ Exposing Prometheus metrics often requires adding instrumentation to apps or usi
 When launching Strapi locally, metrics are visible in `http://localhost:9000/metrics`:
 
 ![Strapi metrics](media/strapi_metrics_localhost_I.png 'Strapi metrics')
-
-### Queries
-
-    up{service="strapi-app-service-demo" namespace="observability-demo"}
-    histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
 
 ## OpenTelemetry
 
@@ -52,6 +69,8 @@ await context.with(parentContext, async () => {
   );
 });
 ```
+
+This instrumentation has been implemented in `strapi-app/src/api/post/controllers/post.js`, with some adjustments to improve readability.
 
 ## Kubernetes
 
@@ -117,7 +136,13 @@ kubectl port-forward -n observability-demo \
 
 Querying `up` metrics for the namespace `observability-demo` shows `cnpg-cluster-demo-1` and `strapi-app-demo`:
 
+    up{service="strapi-app-service-demo" namespace="observability-demo"}
+
 ![Observability-demo up metrics](media/observability-demo_up_metrics.png 'Observability-demo up metrics')
+
+Inspect query latencies with queries such as:
+
+    histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
 
 Before launching the Jaeger dashboard, port-forward the node-app-demo and visit an instrumented route (`http://localhost:3000/grouped-posts-by-category`) to collect traces:
 
@@ -125,7 +150,7 @@ Before launching the Jaeger dashboard, port-forward the node-app-demo and visit 
 kubectl port-forward deploy/node-app-demo 3000:3000 -n observability-demo
 ```
 
-Then, launch the Jaeguer Dashboard:
+Then, launch the Jaeger dashboard:
 
 ```bash
 kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:16686 -n observability-demo
@@ -133,7 +158,7 @@ kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:1668
 
 ![Jaeger Trace Inspection](media/jaeger_trace_timeline_2.png 'Jaeger Trace Inspection')
 
-Traces can be also be debugged through the collector logs as the `debug` exporter is activated.
+Traces can also be debugged through the collector logs while the `debug` exporter is active.
 
 ## Local deployment
 
@@ -186,7 +211,7 @@ Launch the Node.js frontend application:
 
 Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/grouped-posts-by-category` to see grouped posts rendered with tracing enabled.
 
-## Resources:
+## Resources
 
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
