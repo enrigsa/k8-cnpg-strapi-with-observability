@@ -1,5 +1,7 @@
 # Strapi and Cloud Native PG on Kubernetes with Observability
 
+## Observability use case
+
 This project demonstrates a full-stack application with Strapi CMS, PostgreSQL database managed by Cloud Native PG Operator, and comprehensive observability using OpenTelemetry and Prometheus.
 
 Strapi is a Content Management System (CMS) that provides flexibility to create custom services, controllers, policies, and more. When deploying this application in a distributed environment such as Kubernetes, adding observability helps with error detection and performance analysis.
@@ -47,6 +49,15 @@ When launching Strapi locally, metrics are visible in `http://localhost:9000/met
 ## OpenTelemetry
 
 ### Manual instrumentation
+
+The OpenTelemetry project provides the necessary tools for this use case:
+
+- SDK for node.js [@opentelemetry/sdk-node](https://www.npmjs.com/package/@opentelemetry/sdk-node) — the runtime pipeline: collecting telemetry, batching it, and exporting it to a collector or backend.
+- API for Javascript [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api) — code instrumentation to create tracers, start spans, and propagate trace context across service boundaries.
+
+In this demo, the node frontend app starts a trace and injects the current trace context into outgoing HTTP headers.
+Strapi receives those headers, extracts the trace context, and continues the trace in the incoming request.
+This creates a connected distributed trace across both services.
 
 To inject trace context into headers when fetching services (example in `node-app/index.js`):
 
@@ -154,7 +165,7 @@ Querying `up` metrics for the namespace `observability-demo` shows `cnpg-cluster
 
 ![Observability-demo up metrics](media/observability-demo_up_metrics.png 'Observability-demo up metrics')
 
-Inspect query latencies with queries such as:
+Monitor service latency with queries such as:
 
     histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
 
@@ -227,6 +238,9 @@ Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/gr
 
 ## Resources
 
+- [OpenTelemetry - Getting started with Node.js](https://opentelemetry.io/docs/languages/js/getting-started/nodejs/)
+- [@opentelemetry/sdk-node](https://www.npmjs.com/package/@opentelemetry/sdk-node)
+- [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api)
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
