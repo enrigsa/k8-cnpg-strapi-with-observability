@@ -48,12 +48,12 @@ When launching Strapi locally, metrics are visible in `http://localhost:9000/met
 
 ## OpenTelemetry
 
-### API - Manual instrumentation
-
 The OpenTelemetry project provides the necessary tools for this use case:
 
 - SDK for node.js [@opentelemetry/sdk-node](https://www.npmjs.com/package/@opentelemetry/sdk-node) — the runtime pipeline: collecting telemetry, batching it, and exporting it to a collector or backend.
 - API for Javascript [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api) — code instrumentation to create tracers, start spans, and propagate trace context across service boundaries.
+
+### API - Manual instrumentation
 
 In this demo, the node frontend app starts a trace and injects the current trace context into outgoing HTTP headers.
 Strapi receives those headers, extracts the trace context, and continues the trace in the incoming request.
