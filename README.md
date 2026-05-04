@@ -48,7 +48,7 @@ When launching Strapi locally, metrics are visible in `http://localhost:9000/met
 
 ## OpenTelemetry
 
-### Manual instrumentation
+### API - Manual instrumentation
 
 The OpenTelemetry project provides the necessary tools for this use case:
 
@@ -97,6 +97,21 @@ await context.with(parentContext, async () => {
 });
 ```
 
+### SDKs
+
+SDKs are configured in separate instrumentation files. This files are imported when starting applications:
+
+- `node-app/instrumentation.js` --> node-otel-app - configured file import in `node-app/index.js`.
+- `strapi-app/instrumentation.js` --> strapi-otel-app - configured `scripts.start` in `strapi-app/package.json`.
+
+### Collector
+
+For illustrative purposes, we have selected the [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file) based on an OpenTelemetry Collector as it already provides a dashboard to inspect traces. It is recommended to explore other OpenTelemetry Collector images and dashboarding alternatives for production setups.
+
+The implemented config includes basic processors such as [memory_limiter](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/memorylimiterprocessor/README.md) and [batch](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/batchprocessor/README.md).
+
+It has one configured pipeline for traces, that are exported to the Jaeger Dashboard and debug.
+
 ## Kubernetes
 
 ### Deployment
@@ -130,7 +145,7 @@ kubectl apply -f kubernetes-manifests/node-app/deployment.yaml \
 kubectl apply -f kubernetes-manifests/node-app/service.yaml
 ```
 
-4. Deploy Opentelemetry Collector. For illustrative purposes, we have selected the [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file) based on an OpenTelemetry Collector as it already provides a dashboard to inspect traces. It is recommended to explore other OpenTelemetry Collector images and dashboarding alternatives for production setups:
+4. Deploy Opentelemetry Collector deployed in a gateway mode:
 
 ```bash
 kubectl apply -f kubernetes-manifests/opentelemetry/custom-resource-definition.yaml
