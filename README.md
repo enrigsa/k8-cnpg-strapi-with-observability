@@ -1,14 +1,38 @@
 # Strapi and Cloud Native PG on Kubernetes with Observability
 
+## Observability use case
+
 This project demonstrates a full-stack application with Strapi CMS, PostgreSQL database managed by Cloud Native PG Operator, and comprehensive observability using OpenTelemetry and Prometheus.
 
-## Applications
+Strapi is a Content Management System (CMS) that provides flexibility to create custom services, controllers, policies, and more. When deploying this application in a distributed environment such as Kubernetes, adding observability helps with error detection and performance analysis.
+
+This demo illustrates three approaches to improve Strapi observability:
+
+- **Strapi Prometheus plugin to expose metrics** — useful for HTTP request, error, and resource metrics without custom code
+- **Collection of logs, metrics, and traces based on the OpenTelemetry framework** — needed for distributed traces and request context propagation in custom controllers or other components
+- **Prometheus metrics for Cloud Native PG, a PostgreSQL operator for Kubernetes** — lets you correlate database health and latency with Strapi behavior. Because Strapi connects to a SQL database, adding observability to the database helps surface issues that affect Strapi.
+
+## Applications for the demo
+
+```mermaid
+flowchart LR
+  NodeApp[Node App] -->|HTTP + trace context| StrapiApp[Strapi App]
+  StrapiApp -->|SQL| CloudNativePG[Cloud Native PG]
+  StrapiApp -->|app metrics| Prometheus[Prometheus]
+  CloudNativePG -->|DB metrics| Prometheus
+  NodeApp -->|traces| OpenTelemetryCollector[OpenTelemetry Collector]
+  StrapiApp -->|traces| OpenTelemetryCollector
+```
 
 **node-app** — Frontend web server that serves views and initializes distributed traces for user requests. It routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
 
 **strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. It instruments API calls with OpenTelemetry spans for distributed tracing.
 
-**PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL server. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
+**PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL operator. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
+
+**OpenTelemetry Collector** — Receives telemetry from instrumented services, processes traces and metrics, and forwards them to backends like Jaeger and Prometheus.
+
+**Prometheus Operator** — Manages Prometheus instances and service discovery in Kubernetes, making it easier to deploy and configure monitoring for Strapi, PostgreSQL, and the observability stack.
 
 ## Prometheus metrics for Strapi
 
@@ -22,16 +46,36 @@ When launching Strapi locally, metrics are visible in `http://localhost:9000/met
 
 ![Strapi metrics](media/strapi_metrics_localhost_I.png 'Strapi metrics')
 
-### Queries
-
-    up{service="strapi-app-service-demo" namespace="observability-demo"}
-    histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
-
 ## OpenTelemetry
 
-### Manual instrumentation
+The OpenTelemetry project provides the necessary tools for this use case:
 
-To extract context and correlate spans in the receiving service in a Strapi controller, use `propagation.extract` and `context.with`:
+- SDK for node.js [@opentelemetry/sdk-node](https://www.npmjs.com/package/@opentelemetry/sdk-node) — the runtime pipeline: collecting telemetry, batching it, and exporting it to a collector or backend.
+- API for Javascript [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api) — code instrumentation to create tracers, start spans, and propagate trace context across service boundaries.
+
+### API - Manual instrumentation
+
+In this demo, the node frontend app starts a trace and injects the current trace context into outgoing HTTP headers.
+Strapi receives those headers, extracts the trace context, and continues the trace in the incoming request.
+This creates a connected distributed trace across both services.
+
+To inject trace context into headers when fetching services (example in `node-app/index.js`):
+
+```js
+const { trace, context, propagation } = require('@opentelemetry/api');
+const tracer = trace.getTracer('<service-name>'));
+tracer.startActiveSpan('<span-name>', (span) => {
+  let headers = {};
+  // Inject current trace context into headers
+  propagation.inject(context.active(), headers);
+
+  fetch('<url>', { headers }).finally(() => {
+    span.end();
+  });
+});
+```
+
+To extract context and correlate spans in the receiving service in a Strapi controller, use `propagation.extract` and `context.with` (example in `strapi-app/src/api/post/controllers/post.js`):
 
 ```js
 const { trace, context, propagation } = require('@opentelemetry/api');
@@ -52,6 +96,21 @@ await context.with(parentContext, async () => {
   );
 });
 ```
+
+### SDKs
+
+SDKs are configured in separate instrumentation files. This files are imported when starting applications:
+
+- `node-app/instrumentation.js` --> node-otel-app - configured file import in `node-app/index.js`.
+- `strapi-app/instrumentation.js` --> strapi-otel-app - configured `scripts.start` in `strapi-app/package.json`.
+
+### Collector
+
+For illustrative purposes, we have selected the [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file) based on an OpenTelemetry Collector as it already provides a dashboard to inspect traces. It is recommended to explore other OpenTelemetry Collector images and dashboarding alternatives for production setups.
+
+The implemented config includes basic processors such as [memory_limiter](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/memorylimiterprocessor/README.md) and [batch](https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/batchprocessor/README.md).
+
+It has one configured pipeline for traces, that are exported to the Jaeger Dashboard and debug.
 
 ## Kubernetes
 
@@ -86,7 +145,7 @@ kubectl apply -f kubernetes-manifests/node-app/deployment.yaml \
 kubectl apply -f kubernetes-manifests/node-app/service.yaml
 ```
 
-4. Deploy Opentelemetry Collector. For illustrative purposes, we have selected the [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file) based on an OpenTelemetry Collector as it already provides a dashboard to inspect traces. It is recommended to explore other OpenTelemetry Collector images and dashboarding alternatives for production setups:
+4. Deploy Opentelemetry Collector deployed in a gateway mode:
 
 ```bash
 kubectl apply -f kubernetes-manifests/opentelemetry/custom-resource-definition.yaml
@@ -117,7 +176,13 @@ kubectl port-forward -n observability-demo \
 
 Querying `up` metrics for the namespace `observability-demo` shows `cnpg-cluster-demo-1` and `strapi-app-demo`:
 
+    up{service="strapi-app-service-demo" namespace="observability-demo"}
+
 ![Observability-demo up metrics](media/observability-demo_up_metrics.png 'Observability-demo up metrics')
+
+Monitor service latency with queries such as:
+
+    histogram_quantile(0.90, sum by(le) (rate(http_request_duration_seconds_bucket{app="strapi-app-service-demo" namespace="observability-demo"}[5m])))
 
 Before launching the Jaeger dashboard, port-forward the node-app-demo and visit an instrumented route (`http://localhost:3000/grouped-posts-by-category`) to collect traces:
 
@@ -125,7 +190,7 @@ Before launching the Jaeger dashboard, port-forward the node-app-demo and visit 
 kubectl port-forward deploy/node-app-demo 3000:3000 -n observability-demo
 ```
 
-Then, launch the Jaeguer Dashboard:
+Then, launch the Jaeger dashboard:
 
 ```bash
 kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:16686 -n observability-demo
@@ -133,7 +198,7 @@ kubectl port-forward deployment/open-telemetry-instance-demo-collector 8080:1668
 
 ![Jaeger Trace Inspection](media/jaeger_trace_timeline_2.png 'Jaeger Trace Inspection')
 
-Traces can be also be debugged through the collector logs as the `debug` exporter is activated.
+Traces can also be debugged through the collector logs while the `debug` exporter is active.
 
 ## Local deployment
 
@@ -186,8 +251,11 @@ Launch the Node.js frontend application:
 
 Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/grouped-posts-by-category` to see grouped posts rendered with tracing enabled.
 
-## Resources:
+## Resources
 
+- [OpenTelemetry - Getting started with Node.js](https://opentelemetry.io/docs/languages/js/getting-started/nodejs/)
+- [@opentelemetry/sdk-node](https://www.npmjs.com/package/@opentelemetry/sdk-node)
+- [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api)
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
