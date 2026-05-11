@@ -9,7 +9,7 @@ Strapi is a Content Management System (CMS) that provides flexibility to create 
 This demo illustrates three approaches to improve Strapi observability:
 
 - **Strapi Prometheus plugin to expose metrics** — useful for HTTP request, error, and resource metrics without custom code
-- **Collection of logs, metrics, and traces based on the OpenTelemetry framework** — needed for distributed traces and request context propagation in custom controllers or other components
+- **Collection of logs, metrics, and traces based on the OpenTelemetry framework** — needed for distributed traces and request context propagation in middlewares and other components
 - **Prometheus metrics for Cloud Native PG, a PostgreSQL operator for Kubernetes** — lets you correlate database health and latency with Strapi behavior. Because Strapi connects to a SQL database, adding observability to the database helps surface issues that affect Strapi.
 
 ## Applications for the demo
@@ -75,13 +75,11 @@ tracer.startActiveSpan('<span-name>', (span) => {
 });
 ```
 
-To extract context and correlate spans in the receiving service in a Strapi controller, use `propagation.extract` and `context.with` (example in `strapi-app/src/api/post/controllers/post.js`):
+To extract context and correlate spans in the receiving service in a Strapi controller or middleware, use `propagation.extract` and `context.with`:
 
 ```js
 const { trace, context, propagation } = require('@opentelemetry/api');
 const tracer = trace.getTracer('strapi-otel-tracer');
-
-// Inside controller
 
 const headers = ctx.request.headers;
 const parentContext = propagation.extract(context.active(), headers);
@@ -96,6 +94,8 @@ await context.with(parentContext, async () => {
   );
 });
 ```
+
+The current implementation takes advantage of [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares) in _routes_ and _Document Service_, allowing reuse of manual instrumentation for multiple routes and services. It extracts propagation context from request headers in the _global::observability_ middleware (`strapi-app/src/middlewares/observability.js`) and passes it through `ctx.query.otelContext` to be available for _Document Service_ middleware, which is configured in `strapi-app/src/index.js`. Then, spans can be collected for the HTTP request and every _Document Service_ call. Both middlewares can have opt-out mechanisms based on specific `apis` or `service methods`.
 
 ### SDKs
 
@@ -257,7 +257,9 @@ Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/gr
 - [@opentelemetry/sdk-node](https://www.npmjs.com/package/@opentelemetry/sdk-node)
 - [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api)
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
-- [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
 - [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file)
+- [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
+- [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares)
 - [kube-prometheus-stack Helm chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
+- [How to Manage Enterprise Metadata Without Expensive Migrations](https://strapi.io/blog/7-tips-enterprise-metadata-management)
