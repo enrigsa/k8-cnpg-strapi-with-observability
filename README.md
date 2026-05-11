@@ -97,6 +97,20 @@ await context.with(parentContext, async () => {
 
 The current implementation takes advantage of [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares) in _routes_ and _Document Service_, allowing reuse of manual instrumentation for multiple routes and services. It extracts propagation context from request headers in the _global::observability_ middleware (`strapi-app/src/middlewares/observability.js`) and passes it through `ctx.query.otelContext` to be available for _Document Service_ middleware, which is configured in `strapi-app/src/index.js`. Then, spans can be collected for the HTTP request and every _Document Service_ call. Both middlewares can have opt-out mechanisms based on specific `apis` or `service methods`.
 
+This strategy allows for properly reflecting Strapi components when handling internal operations. Other components could be instrumented, such as [policies](https://docs.strapi.io/cms/backend-customization/policies).
+
+### Why not use just auto-instrumentation libraries
+
+[@opentelemetry/instrumentation-http](https://www.npmjs.com/package/@opentelemetry/instrumentation-http) package could be used to autoinstrument HTTP requests, even with some customization to set attributes or sample traces. However, it does not collect Strapi internal operations, such as _Document Service_ queries that could help to detect where a specific problem is in a custom controller.
+
+[@opentelemetry/instrumentation-pg](https://www.npmjs.com/package/@opentelemetry/instrumentation-pg) could be added to the **Node.js SDK**, adding observability about Strapi queries to the Postgres database. It would add more information about the whole transactions, but it does not substitute or replace traces for _Document Service_ queries.
+
+This is an example of how a transaction would appear in Jaeger using these two libraries:
+
+![Jaeger trace inspection with autoinstrumentation libraries](media/jaeger_trace_timeline_pg_http_libraries.png 'Jaeger trace inspection with autoinstrumentation libraries')
+
+Note that internal _Document Service_ queries are not reflected.
+
 ### SDKs
 
 SDKs are configured in separate instrumentation files. This files are imported when starting applications:
@@ -258,6 +272,8 @@ Open the app at `http://localhost:3000`. Visit the homepage and navigate to `/gr
 - [@opentelemetry/api](https://www.npmjs.com/package/@opentelemetry/api)
 - [OpenTelemetry JS Propagation](https://uptrace.dev/get/opentelemetry-js/propagation)
 - [OpenTelemetry Spans Explained: Deconstructing Distributed Tracing](https://last9.io/blog/opentelemetry-spans-events/)
+- [OpenTelemetry HTTP and HTTPS Instrumentation for Node.js](https://www.npmjs.com/package/@opentelemetry/instrumentation-http)
+- [OpenTelemetry Postgres Instrumentation for Node.js](https://www.npmjs.com/package/@opentelemetry/instrumentation-pg)
 - [Jaeger V2 Operator](https://github.com/jaegertracing/jaeger-operator?tab=readme-ov-file)
 - [Node.js Distributed Tracing for Microservices](https://oneuptime.com/blog/post/2026-01-06-nodejs-distributed-tracing-microservices/view)
 - [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares)
