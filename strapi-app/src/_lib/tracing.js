@@ -10,7 +10,6 @@ const tracer = trace.getTracer(process.env.OTEL_SERVICE_NAME);
  */
 async function withSpan(name, fn) {
   const span = tracer.startSpan(name);
-  span.setAttribute('component', 'strapi');
 
   return await context.with(trace.setSpan(context.active(), span), async () => {
     try {

@@ -95,7 +95,7 @@ await context.with(parentContext, async () => {
 });
 ```
 
-The current implementation takes advantage of [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares) in _routes_ and _Document Service_, allowing reuse of manual instrumentation for multiple routes and services. It extracts propagation context from request headers in the _global::observability_ middleware (`strapi-app/src/middlewares/observability.js`) and passes it through `ctx.query.otelContext` to be available for _Document Service_ middleware, which is configured in `strapi-app/src/index.js`. Then, spans can be collected for the HTTP request and every _Document Service_ call. Both middlewares can have opt-out mechanisms based on specific `apis` or `service methods`.
+The current implementation takes advantage of [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares) in _routes_ and _Document Service_, allowing reuse of manual instrumentation for multiple routes and services. It extracts propagation context from request headers in the _global::observability_ middleware (`strapi-app/src/middlewares/observability.js`) and passes it through `ctx.query.otelContext` to be available for _Document Service_ middleware, which is configured in `strapi-app/src/index.js`. Then, spans can be collected for the HTTP request and every _Document Service_ call. Both middlewares can have opt-out mechanisms based on specific `apis` or `document service methods`.
 
 This strategy allows for properly reflecting Strapi components when handling internal operations. Other components could be instrumented, such as [policies](https://docs.strapi.io/cms/backend-customization/policies).
 

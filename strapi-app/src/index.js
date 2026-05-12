@@ -3,7 +3,14 @@ const { context: otelContext } = require('@opentelemetry/api');
 const { withTraceContext, withSpan } = require('./_lib/tracing.js');
 
 const OBSERVABLE_API_ENTITIES = ['api::post.post', 'api::category.category'];
-const OBSERVABLE_ACTIONS = ['findMany', 'create', 'update', 'delete'];
+const OBSERVABLE_ACTIONS = [
+  'findMany',
+  'findOne',
+  'create',
+  'update',
+  'delete',
+  // Add more actions as needed. `Count` action is intentionally left out to avoid excessive spans for count queries.
+];
 
 module.exports = {
   /**
@@ -26,27 +33,28 @@ module.exports = {
         return next();
       }
 
-      const parentContext = context.params?.otelContext || otelContext.active();
-      const collectionName = context.contentType?.collectionName ?? '';
       const apiName = context.contentType?.apiName ?? '';
-      const status = context.params?.status ?? '';
+      const collectionName = context.contentType?.collectionName ?? '';
+      const limit = context.params?.limit ?? '';
+      const parentContext = context.params?.otelContext || otelContext.active();
       const populate = context.params?.populate ?? [];
       const start = context.params?.start ?? '';
-      const limit = context.params?.limit ?? '';
+      const status = context.params?.status ?? '';
 
       return await withTraceContext(parentContext, async () => {
         const spanName = `${apiName}.${action}`;
 
         return await withSpan(spanName, async (span) => {
           span.setAttributes({
-            uid,
-            'contentType.apiName': apiName,
-            action,
-            'contentType.collectionName': collectionName,
-            'params.status': status,
+            'params.limit': limit,
             'params.populate': populate,
             'params.start': start,
-            'params.limit': limit,
+            'params.status': status,
+            'service.action': action,
+            'strapi.apiName': apiName,
+            'strapi.collectionName': collectionName,
+            'strapi.component': 'Document Service Middleware',
+            'strapi.uid': uid,
           });
 
           const result = await next();

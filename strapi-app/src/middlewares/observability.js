@@ -20,13 +20,31 @@ module.exports = () => {
       const request = ctx.request;
       const { method = '', url = '' } = request;
       const spanName = `HTTP ${method} ${url}`;
+      const userAgent = request.header['user-agent'] || '';
+      const body = ctx.request.body;
 
       await withSpan(spanName, async (span) => {
-        span.setAttribute('http.method', method);
-        span.setAttribute('http.url', url);
-        span.setAttribute('db.table', 'post');
+        // Check semantic conventions for HTTP attributes: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
+        span.setAttributes({
+          'http.request.method': method,
+          'strapi.component': 'Global Middleware',
+          'url.path': url,
+          'user_agent.original': userAgent,
+        });
+
+        if (body) {
+          const stringifiedBody = JSON.stringify(body);
+          span.setAttributes({
+            'http.request.body': stringifiedBody,
+          });
+        }
 
         await next();
+
+        span.setAttributes({
+          'http.response.status_code': ctx.response.status,
+          'http.response.message': ctx.response.message,
+        });
       });
     });
   };
