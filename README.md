@@ -26,7 +26,7 @@ flowchart LR
 
 **node-app** — Frontend web server that serves views and initializes distributed traces for user requests. It routes requests to Strapi and propagates trace context through the system using OpenTelemetry.
 
-**strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. It instruments API calls with OpenTelemetry spans for distributed tracing.
+**strapi-app** — Strapi CMS instance that handles API requests, database operations, and exposes Prometheus metrics. It instruments API calls with OpenTelemetry spans for distributed tracing. For the current implementation, it is required to use Strapi 5 to instrument the _Document Service_ API.
 
 **PostgreSQL (Cloud Native PG)** — Primary database. Locally, a standalone PostgreSQL operator. In Kubernetes, deployed and managed by the Cloud Native PG Operator for high availability and automated backups.
 
@@ -95,7 +95,7 @@ await context.with(parentContext, async () => {
 });
 ```
 
-The current implementation takes advantage of [Strapi middlewares](https://docs.strapi.io/cms/backend-customization/middlewares) in _routes_ and _Document Service_, allowing reuse of manual instrumentation for multiple routes and services. It extracts propagation context from request headers in the _global::observability_ middleware (`strapi-app/src/middlewares/observability.js`) and passes it through `ctx.query.otelContext` to be available for _Document Service_ middleware, which is configured in `strapi-app/src/index.js`. Then, spans can be collected for the HTTP request and every _Document Service_ call. Both middlewares can have opt-out mechanisms based on specific `apis` or `document service methods`.
+The current implementation takes advantage of [Strapi 5 middlewares](https://docs.strapi.io/cms/backend-customization/middlewares) in _routes_ and _Document Service_, allowing reuse of manual instrumentation for multiple routes and services. It extracts propagation context from request headers in the _global::observability_ middleware (`strapi-app/src/middlewares/observability.js`) and passes it through `ctx.query.otelContext` to be available for _Document Service_ middleware, which is configured in `strapi-app/src/index.js`. Then, spans can be collected for the HTTP request and every _Document Service_ call. Both middlewares can have opt-out mechanisms based on specific `apis` or `document service methods`.
 
 This strategy allows for properly reflecting Strapi components when handling internal operations. Other components could be instrumented, such as [policies](https://docs.strapi.io/cms/backend-customization/policies).
 
