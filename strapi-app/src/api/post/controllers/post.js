@@ -5,69 +5,41 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { withSpan, withTraceContext } = require('../../../_lib/tracing');
-const { context, propagation } = require('@opentelemetry/api');
 
 module.exports = createCoreController('api::post.post', ({ strapi }) => ({
   async listGroupedPostsByCategory(ctx) {
     await this.validateQuery(ctx);
 
-    // Extract trace context from message headers
-    const headers = ctx.request.headers;
-    const parentContext = propagation.extract(context.active(), headers);
+    const posts = await strapi
+      .service('api::post.post')
+      .find({ populate: ['categories'] });
+    // Sanitizing output will hide data if the user doesn't have permissions
+    const { results: sanitizedPosts } = await this.sanitizeOutput(posts, ctx);
 
-    // Use the extracted context to create spans for the operations
-    const groupedPostsByCategory = await withTraceContext(
-      parentContext,
-      async () =>
-        await withSpan('list-grouped-posts-by-category', async () => {
-          const posts = await withSpan('fetch-posts', async (span) => {
-            span.setAttribute('db.table', 'posts');
-            const { results } = await strapi
-              .service('api::post.post')
-              .find({ populate: ['categories'] });
-            // Sanitizing output will hide data if the user doesn't have permissions
-            const sanitizedResults = await this.sanitizeOutput(results, ctx);
+    const { results: categories } = await strapi
+      .service('api::category.category')
+      .find();
+    // Sanitizing output will hide data if the user doesn't have permissions
+    const sanitizedCategories = await this.sanitizeOutput(categories, ctx);
 
-            return sanitizedResults;
-          });
+    const groupedPostsByCategory = sanitizedCategories.map((category) => {
+      const postsInCategory = sanitizedPosts
+        .filter((post) =>
+          post?.categories?.some((cat) => cat.id === category.id)
+        )
+        .map((post) => ({
+          content: post.content,
+          id: post.id,
+          title: post.title,
+        }));
 
-          const categories = await withSpan(
-            'fetch-categories',
-            async (span) => {
-              span.setAttribute('db.table', 'categories');
-              const { results } = await strapi
-                .service('api::category.category')
-                .find();
-              // Sanitizing output will hide data if the user doesn't have permissions
-              const sanitizedResults = await this.sanitizeOutput(results, ctx);
+      return {
+        description: category.description,
+        name: category.name,
+        posts: postsInCategory,
+      };
+    });
 
-              return sanitizedResults;
-            }
-          );
-
-          const groupedPostsByCategory = categories.map((category) => {
-            const postsInCategory = posts
-              .filter((post) =>
-                post?.categories?.some((cat) => cat.id === category.id)
-              )
-              .map((post) => ({
-                content: post.content,
-                id: post.id,
-                title: post.title,
-              }));
-
-            return {
-              description: category.description,
-              name: category.name,
-              posts: postsInCategory,
-            };
-          });
-
-          return this.transformResponse({ groupedPostsByCategory });
-        })
-    );
-
-    return groupedPostsByCategory;
+    return this.transformResponse({ groupedPostsByCategory });
   },
 }));
